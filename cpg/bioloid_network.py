@@ -11,8 +11,8 @@ class BioloidNetwork:
         self.simulation_time = simulation_time
         self.size = len(weights) # how many masuoka neurons there are in the network
         self.weights = weights
-        self.outputs = np.random.rand(self.size) # init the outputs randomly to start the network, then store the last ouput here
-        # self.outputs = np.ones(self.size) # init outputs with ones to avoid stocastic behaviour
+        # self.outputs = np.random.rand(self.size) # init the outputs randomly to start the network, then store the last ouput here
+        self.outputs = np.ones(self.size) # init outputs with ones to avoid stocastic behaviour
         self.neurons = [] # where we store the matsuoka neurons
 
         self.stored_outputs = np.zeros([self.simulation_time, self.size]) # storing the output over time
