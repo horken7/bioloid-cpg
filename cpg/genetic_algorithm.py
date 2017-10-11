@@ -4,161 +4,190 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import random
 
-# how many genomes we evolve at once
-population_size = 10
+class GenetigAlgorithm:
+    def __init__(self):
 
-# which real motors the genomes correspond to
-labels = ['right_knee_Z', 'left_knee_Z', 'right_hip_X', 'right_hip_Y', 'right_hip_Z', 'left_hip_X', 'left_hip_Y', 'left_hip_Z', 'right_arm_X', 'right_arm_Y', 'right_arm_Z', 'left_arm_X', 'left_arm_Y', 'left_arm_Z', 'right_foot_X', 'right_foot_Z', 'left_foot_X', 'left_foot_Z']
-# labels = ['right_knee_Z', 'left_knee_Z', 'right_hip_Z', 'left_hip_Z', 'right_arm_Z', 'left_arm_Z', 'right_foot_Z', 'left_foot_Z']
+        # how many genomes we evolve at once
+        self.population_size = 10
 
-# these are the amount of variables used in our genome
-degrees_of_freedom = len(labels)
+        # which real motors the genomes correspond to
+        self.labels = ['right_knee_Z', 'left_knee_Z', 'right_hip_X', 'right_hip_Y', 'right_hip_Z', 'left_hip_X', 'left_hip_Y', 'left_hip_Z', 'right_arm_X', 'right_arm_Y', 'right_arm_Z', 'left_arm_X', 'left_arm_Y', 'left_arm_Z', 'right_foot_X', 'right_foot_Z', 'left_foot_X', 'left_foot_Z']
+        # labels = ['right_knee_Z', 'left_knee_Z', 'right_hip_Z', 'left_hip_Z', 'right_arm_Z', 'left_arm_Z', 'right_foot_Z', 'left_foot_Z']
 
-# init weights, our actual genome
-weights = np.random.rand(population_size, degrees_of_freedom, degrees_of_freedom)*2 - 1
+        # these are the amount of variables used in our genome
+        self.degrees_of_freedom = len(self.labels)
 
-# using simulation time of one walking cycle of accelerometer data
-simulation_time = 1989
+        # init weights, our actual genome
+        self.weights = np.random.rand(self.population_size, self.degrees_of_freedom, self.degrees_of_freedom)*2 - 1
 
-# read the accelerometer data and extract only the joints we are interested in into validation data
-accelerometer_data = pd.read_pickle('../accelerometer/accelerometer_data_cycle.pkl')
-validation_data = accelerometer_data[labels]
+        # using simulation time of one walking cycle of accelerometer data
+        self.simulation_time = 1989
 
-# BELOW IS WHAT IS NEEDED FOR THE EVOLUTION
-generations = 30
+        # read the accelerometer data and extract only the joints we are interested in into validation data
+        accelerometer_data = pd.read_pickle('../accelerometer/accelerometer_data_cycle.pkl')
+        self.validation_data = accelerometer_data[self.labels]
 
-mean_fitness_over_time = []
-max_fitness_over_time = []
-tournament_size = round(population_size/5)
+        # generations to evolve
+        self.generations = 30
 
-for apa in range(generations):
-
-    # declare population
-    population = []
-
-    # initialise the population with current weights
-    for wghts in weights:
-        population.append(BioloidNetwork(weights=wghts, simulation_time=simulation_time))
-
-    # get the output results of our population based on current genome. put them in a correctly labeled df for easier analysis
-    results = []
-    for individual in population:
-        individual.simulate_neurons()
-        r = individual.get_outputs()
-        rdf = pd.DataFrame(r)
-        rdf.columns = (labels)
-        results.append(rdf)
-
-    # get fitness, using the mean of the correlation between the two signals. may update!
-    # other correlation methors are: plt.xcorr, np.correlate, df.corr, etc.
-    fitness = []
-    for individual in results:
-        correlation = validation_data.corrwith(individual)
-        corr = np.min(abs(correlation)) # TODO changed here, using abs!
-        fitness.append(corr)
-    mean_fitness_over_time.append(np.mean(fitness))
-    max_fitness_over_time.append(np.max(fitness))
+        # tournament size to use in selection
+        self.tournament_size = round(self.population_size / 5)
 
 
-    # tournament selection on population-1 to save elitism
-    selected = []
-    while(len(selected) < len(fitness)-1):
-        tournament = []
-        tournament_index = []
-        for i in range(tournament_size):
-            index = random.randint(0, len(fitness)-1)
-            tournament_index.append(index)
-            tournament.append(fitness[index])
-        selected.append(tournament_index[ tournament.index(max(tournament)) ]) # this is the actual fitness criterion
+    def init_population(self):
+        # declare population
+        population = []
 
-    # save elitism
-    ind_1337 = np.argmax(fitness)
-    elite = weights[ind_1337]
+        # initialise the population with current weights
+        for wghts in self.weights:
+            population.append(BioloidNetwork(weights=wghts, simulation_time=self.simulation_time))
+        return  population
+
+    def get_ouputs(self, population):
+        # get the output results of our population based on current genome. put them in a correctly labeled df for easier analysis
+        results = []
+        for individual in population:
+            individual.simulate_neurons()
+            r = individual.get_outputs()
+            rdf = pd.DataFrame(r)
+            rdf.columns = (self.labels)
+            results.append(rdf)
+        return results
+
+    def get_fitness(self, results):
+        # get fitness, using the mean of the correlation between the two signals. may update!
+        # other correlation methors are: plt.xcorr, np.correlate, df.corr, etc.
+        fitness = []
+        for individual in results:
+            correlation = self.validation_data.corrwith(individual)
+            corr = np.min(abs(correlation))  # TODO changed here, using min and abs!
+            fitness.append(corr)
+        return  fitness
+
+    def get_tournament_selection(self, fitness):
+        # tournament selection on population-1 to save one space for elitism
+        selected = []
+        while (len(selected) < len(fitness) - 1):
+            tournament = []
+            tournament_index = []
+            for i in range(self.tournament_size):
+                index = random.randint(0, len(fitness) - 1)
+                tournament_index.append(index)
+                tournament.append(fitness[index])
+            selected.append(tournament_index[tournament.index(max(tournament))])  # this is the actual fitness criterion
+        return selected
+
+    def get_permutations(self, wghts):
+        # crossovers in *n* of the population between randomly selected individuals
+        n = round(len(wghts))
+        for m in range(n):
+            ind1 = random.randint(0, len(selected) - 1)
+            ind2 = random.randint(0, len(selected) - 1)
+            w1 = wghts[ind1]
+            w2 = wghts[ind2]
+            w3 = np.copy(w1)
+            w1[:, int(len(w1) / 2):] = w2[:, int(len(w1) / 2):]
+            w2[:, int(len(w1) / 2):] = w3[:, int(len(w1) / 2):]
+        return wghts
+
+    def get_mutations(self, wghts):
+        # mutations in *n* of the population in randomly selected individuals
+        n = round(len(wghts))
+        for m in range(n):
+            ind1 = random.randint(0, len(wghts) - 1)
+            tmp_w = wghts[ind1]
+            length = len(wghts[0])
+            ind2 = random.randint(round(self.degrees_of_freedom / 2), self.degrees_of_freedom - 1)
+            tmp_w[:, :ind2] = np.random.rand(length, ind2) * 2 - 1
+        return wghts
+
+    def plot_fitness(self, mean_f, max_f):
+        # plot fitness
+        plt.figure()
+        plt.subplot(1, 2, 1)
+        plt.title('Mean fitness')
+        plt.xlabel('Iterations')
+        plt.ylabel('Fitness')
+        plt.plot(np.linspace(0, len(mean_f), len(mean_f)), mean_f)
+        plt.subplot(1, 2, 2)
+        plt.title('Max fitness')
+        plt.xlabel('Iterations')
+        plt.ylabel('Fitness')
+        plt.plot(np.linspace(0, len(max_f), len(max_f)), max_f)
+        plt.show()
+
+    def plot_individual(self, individual):
+        # plot the output signals
+        for i in self.labels:
+            plt.plot(np.linspace(0, len(individual[i]), len(individual[i])), individual[i])
 
 
-    # update weights based on selected individuals
-    w_temp = []
-    for i in selected:
-        w_temp.append(np.copy(weights[i]))
 
 
-    # crossovers in a *quarter* the population between randomly selected individuals
-    for bepa in range(round(len(selected))):
-        ind1 = random.randint(0, len(selected)-1)
-        ind2 = random.randint(0, len(selected)-1)
-        w1 = w_temp[ind1]
-        w2 = w_temp[ind2]
-        w3 = np.copy(w1)
-        w1[:,int(len(w1)/2):] = w2[:,int(len(w1)/2):]
-        w2[:, int(len(w1) / 2):] = w3[:, int(len(w1) / 2):]
+# this is where the actual evolution happens
+if __name__ == "__main__":
+    mean_fitness_over_time = []
+    max_fitness_over_time = []
 
-    # mutations in a *quarter* the population in randomly selected individuals
-    for cepa in range(round(len(selected))):
-        ind1 = random.randint(0, len(w_temp)-1)
-        tmp_w = w_temp[ind1]
-        length = len(tmp_w)
-        ind2 = random.randint(round(degrees_of_freedom/2), degrees_of_freedom-1)
-        tmp_w[:, :ind2] = np.random.rand(length, ind2)*2 - 1
+    ga = GenetigAlgorithm()
 
-    # input the 1337
-    w_temp.append(elite)
+    for n in range(ga.generations):
+        # init the population for each generation (to start on same conditions)
+        population = ga.init_population()
 
-    # update weights
-    weights = np.copy(w_temp)
+        # get the outputs for one generation
+        results = ga.get_ouputs(population)
 
-    print('Generation: %i' % apa)
+        # calculate the fitness and store historical values
+        fitness = ga.get_fitness(results)
+        mean_fitness_over_time.append(np.mean(fitness))
+        max_fitness_over_time.append(np.max(fitness))
 
+        # get selected individuals on population-1 to save space for one elitism
+        selected = ga.get_tournament_selection(fitness)
 
-# VISUALISE RESULT
+        # save elitism separately
+        ind_elite = np.argmax(fitness)
+        elite = ga.weights[ind_elite]
 
-# print(fitness_over_time)
+        # update (temporary) weights based on selected individuals
+        w_temp = []
+        for i in selected:
+            w_temp.append(np.copy(ga.weights[i]))
 
-# get outputs for final weights
-results = []
-for individual in population:
-    individual.simulate_neurons()
-    r = individual.get_outputs()
-    rdf = pd.DataFrame(r)
-    rdf.columns = (labels)
-    results.append(rdf)
+        # make permutations and mutations on the genome
+        w_temp = ga.get_permutations(w_temp)
+        w_temp = ga.get_mutations(w_temp)
 
-# get fitness corresponding to weights
-fitness = []
-for individual in results:
-    correlation = validation_data.corrwith(individual)
-    mean = np.mean(correlation)
-    fitness.append(mean)
+        # input the 1337
+        w_temp.append(elite)
 
-# find the index of the best individual
-index = fitness.index(max(fitness))
+        # update weights
+        ga.weights = np.copy(w_temp)
 
-# get best individual
-vinare = results[index]
+        print('Generation: %i' % n)
 
-# get best weights
-w = weights[index]
+    # use last generation to visualise results
+    population = ga.init_population()
+    results = ga.get_ouputs(population)
+    fitness = ga.get_fitness(results)
 
-# plot the output signals
-for j in labels:
-    plt.plot( np.linspace(0,len(vinare[j]), len(vinare[j])), vinare[j] )
+    # find the index of the best individual
+    index = fitness.index(max(fitness))
 
-# plot fitness
-plt.figure()
-plt.subplot(1,2,1)
-plt.title('Mean fitness')
-plt.xlabel('Iterations')
-plt.ylabel('Fitness')
-plt.plot(np.linspace(0, len(mean_fitness_over_time), len(mean_fitness_over_time)), mean_fitness_over_time)
-plt.subplot(1,2,2)
-plt.title('Max fitness')
-plt.xlabel('Iterations')
-plt.ylabel('Fitness')
-plt.plot(np.linspace(0, len(max_fitness_over_time), len(max_fitness_over_time)), max_fitness_over_time)
-plt.show()
+    # get best individual
+    winner = results[index]
 
-# pickle data
-vinare.to_pickle('outputs/best_individual_output.pkl')
-np.save('outputs/mean_fitness_over_time', mean_fitness_over_time)
-np.save('outputs/max_fitness_over_time', max_fitness_over_time)
-np.save('outputs/winning_weights', w)
-np.savetxt("outputs/weights.csv", w, delimiter=",")
+    # get best weights
+    w = ga.weights[index]
+
+    # plot output of individual and fitness over time
+    ga.plot_individual(winner)
+    ga.plot_fitness(mean_fitness_over_time, max_fitness_over_time)
+
+    # pickle data
+    winner.to_pickle('outputs/best_individual_output.pkl')
+    np.save('outputs/mean_fitness_over_time', mean_fitness_over_time)
+    np.save('outputs/max_fitness_over_time', max_fitness_over_time)
+    np.save('outputs/winning_weights', w)
+    np.savetxt("outputs/weights.csv", w, delimiter=",")
