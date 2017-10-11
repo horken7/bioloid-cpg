@@ -3,7 +3,7 @@ import numpy as np
 
 class BioloidNetwork:
     """ Generic algorithm to simulate a bioloid network, more specifically in CPG applications """
-    def __init__(self, weights, simulation_time):
+    def __init__(self, weights, simulation_time, simulation_type):
         """
         :param weights: square matrix (np.narray) containing the weights between all neurons in the network
         :param simulation_time: the simulation time for one generation
@@ -11,8 +11,11 @@ class BioloidNetwork:
         self.simulation_time = simulation_time
         self.size = len(weights) # how many masuoka neurons there are in the network
         self.weights = weights
-        # self.outputs = np.random.rand(self.size) # init the outputs randomly to start the network, then store the last ouput here
-        self.outputs = np.ones(self.size) # init outputs with ones to avoid stocastic behaviour
+        # if simulating with entire Bioloid as genome, use random outputs else use constant
+        if(simulation_type==1):
+            self.outputs = np.random.rand(self.size) # init the outputs randomly to start the network, then store the last ouput here
+        else:
+            self.outputs = np.ones(self.size) # init outputs with ones to avoid stocastic behaviour
         self.neurons = [] # where we store the matsuoka neurons
 
         self.stored_outputs = np.zeros([self.simulation_time, self.size]) # storing the output over time
@@ -48,6 +51,10 @@ class BioloidNetwork:
     def get_output(self):
         """ Simple getter """
         return self.outputs
+
+    def get_weights(self):
+        """ Simple getter """
+        return self.weights
 
     def set_weights(self, w):
         """ Simple setter """

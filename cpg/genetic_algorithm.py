@@ -3,12 +3,15 @@ from cpg.bioloid_network import BioloidNetwork
 import matplotlib.pyplot as plt
 import pandas as pd
 import random
+import copy
 
-class GenetigAlgorithm:
+class GeneticAlgorithm:
     def __init__(self):
+        # if 1, then use entire bioloid as genome, else use only weights
+        self.simulation_type = 0
 
         # how many genomes we evolve at once
-        self.population_size = 10
+        self.population_size = 5
 
         # which real motors the genomes correspond to
         self.labels = ['right_knee_Z', 'left_knee_Z', 'right_hip_X', 'right_hip_Y', 'right_hip_Z', 'left_hip_X', 'left_hip_Y', 'left_hip_Z', 'right_arm_X', 'right_arm_Y', 'right_arm_Z', 'left_arm_X', 'left_arm_Y', 'left_arm_Z', 'right_foot_X', 'right_foot_Z', 'left_foot_X', 'left_foot_Z']
@@ -28,7 +31,7 @@ class GenetigAlgorithm:
         self.validation_data = accelerometer_data[self.labels]
 
         # generations to evolve
-        self.generations = 30
+        self.generations = 10
 
         # tournament size to use in selection
         self.tournament_size = round(self.population_size / 5)
@@ -40,7 +43,7 @@ class GenetigAlgorithm:
 
         # initialise the population with current weights
         for wghts in self.weights:
-            population.append(BioloidNetwork(weights=wghts, simulation_time=self.simulation_time))
+            population.append(BioloidNetwork(weights=wghts, simulation_time=self.simulation_time, simulation_type=self.simulation_type))
         return  population
 
     def get_ouputs(self, population):
@@ -77,20 +80,20 @@ class GenetigAlgorithm:
             selected.append(tournament_index[tournament.index(max(tournament))])  # this is the actual fitness criterion
         return selected
 
-    def get_permutations(self, wghts):
+    def get_permutations_weights(self, wghts):
         # crossovers in *n* of the population between randomly selected individuals
         n = round(len(wghts))
         for m in range(n):
-            ind1 = random.randint(0, len(selected) - 1)
-            ind2 = random.randint(0, len(selected) - 1)
+            ind1 = random.randint(0, n - 1)
+            ind2 = random.randint(0, n - 1)
             w1 = wghts[ind1]
             w2 = wghts[ind2]
             w3 = np.copy(w1)
-            w1[:, int(len(w1) / 2):] = w2[:, int(len(w1) / 2):]
+            w1[:, (int(len(w1) / 2)-1):] = w2[:, (int(len(w1) / 2)-1):]
             w2[:, int(len(w1) / 2):] = w3[:, int(len(w1) / 2):]
         return wghts
 
-    def get_mutations(self, wghts):
+    def get_mutations_weights(self, wghts):
         # mutations in *n* of the population in randomly selected individuals
         n = round(len(wghts))
         for m in range(n):
@@ -100,6 +103,35 @@ class GenetigAlgorithm:
             ind2 = random.randint(round(self.degrees_of_freedom / 2), self.degrees_of_freedom - 1)
             tmp_w[:, :ind2] = np.random.rand(length, ind2) * 2 - 1
         return wghts
+
+    def get_permutations_population(self, population):
+        # crossovers in *n* of the population between randomly selected individuals
+        n = round(len(population))
+        for m in range(n):
+            ind1 = random.randint(0, len(population) - 1)
+            ind2 = random.randint(0, len(population) - 1)
+            p1 = population[ind1]
+            p2 = population[ind2]
+            w1 = p1.get_weights()
+            w2 = p2.get_weights()
+            w3 = copy.deepcopy(w1)
+            w1[:, int(len(w1) / 2):] = w2[:, int(len(w1) / 2):]
+            w2[:, int(len(w1) / 2):] = w3[:, int(len(w1) / 2):]
+            population[ind1].set_weights(w1)
+            population[ind1].set_weights(w2)
+        return population
+
+    def get_mutations_population(self, population):
+        # mutations in *n* of the population in randomly selected individuals
+        n = round(len(population))
+        for m in range(n):
+            ind1 = random.randint(0, len(population) - 1)
+            tmp_w = population[ind1].get_weights()
+            length = len(tmp_w)
+            ind2 = random.randint(round(self.degrees_of_freedom / 2), self.degrees_of_freedom - 1)
+            tmp_w[:, :ind2] = np.random.rand(length, ind2) * 2 - 1
+            population[ind1].set_weights(tmp_w)
+        return population
 
     def plot_fitness(self, mean_f, max_f):
         # plot fitness
@@ -129,11 +161,16 @@ if __name__ == "__main__":
     mean_fitness_over_time = []
     max_fitness_over_time = []
 
-    ga = GenetigAlgorithm()
+    ga = GeneticAlgorithm()
 
-    for n in range(ga.generations):
+    if(ga.simulation_type==1):
         # init the population for each generation (to start on same conditions)
         population = ga.init_population()
+
+    for n in range(ga.generations):
+        if(ga.simulation_type != 1):
+            # init the population for each generation (to start on same conditions)
+            population = ga.init_population()
 
         # get the outputs for one generation
         results = ga.get_ouputs(population)
@@ -148,24 +185,45 @@ if __name__ == "__main__":
 
         # save elitism separately
         ind_elite = np.argmax(fitness)
-        elite = ga.weights[ind_elite]
 
-        # update (temporary) weights based on selected individuals
-        w_temp = []
-        for i in selected:
-            w_temp.append(np.copy(ga.weights[i]))
+        # if simulation type 1, use entire bioloid as genome, else use the weights
+        if(ga.simulation_type == 1):
+            elite = copy.deepcopy(population[ind_elite])
 
-        # make permutations and mutations on the genome
-        w_temp = ga.get_permutations(w_temp)
-        w_temp = ga.get_mutations(w_temp)
+            # update (temporary) population based on selected individuals
+            p_temp = []
+            for i in selected:
+                p_temp.append(copy.deepcopy(population[i]))
 
-        # input the 1337
-        w_temp.append(elite)
+            p_temp = ga.get_permutations_population(p_temp)
+            p_temp = ga.get_mutations_population(p_temp)
 
-        # update weights
-        ga.weights = np.copy(w_temp)
+            # input the 1337
+            p_temp.append(elite)
 
-        print('Generation: %i' % n)
+            # update population
+            population = copy.deepcopy(p_temp)
+
+        else:
+            elite = ga.weights[ind_elite]
+
+            # update (temporary) weights based on selected individuals
+            w_temp = []
+            for i in selected:
+                w_temp.append(np.copy(ga.weights[i]))
+
+
+            # make permutations and mutations on the genome
+            w_temp = ga.get_permutations_weights(w_temp)
+            w_temp = ga.get_mutations_weights(w_temp)
+
+            # input the 1337
+            w_temp.append(elite)
+
+            # update weights
+            ga.weights = np.copy(w_temp)
+
+        print('Generation: %i' % (n+1))
 
     # use last generation to visualise results
     population = ga.init_population()
