@@ -35,7 +35,7 @@ class GeneticAlgorithm:
         self.validation_data = accelerometer_data[self.labels]
 
         # generations to evolve
-        self.generations = 500
+        self.generations = 2
 
         # tournament size to use in selection
         self.tournament_size = round(self.population_size / 5)
