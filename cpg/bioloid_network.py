@@ -1,5 +1,6 @@
 from cpg.matsuoka_joint import MatsuokaJoint
 import numpy as np
+import copy
 
 class BioloidNetwork:
     """ Generic algorithm to simulate a bioloid network, more specifically in CPG applications """
@@ -27,18 +28,18 @@ class BioloidNetwork:
         for i in range(self.size):
             self.neurons.append(MatsuokaJoint())
 
-    def simulate_neurons(self):
+    def simulate_neurons(self, input):
         """ Simulate the neurons for 'simulation_time' amount of updates, NOTE: done sequentially, not in parallel. """
-        # self.outputs = np.ones(self.size)  # init outputs with ones to avoid stocastic behaviour
         for timestep in range(self.simulation_time):
             tmp_outputs = np.ones(self.size) # use this to make syncronous update
             for index, neuron in enumerate(self.neurons): # TODO remake with matrices
-                input1 = sum(self.weights[index] * self.outputs) # inputs given based on some definition.. may change (TODO, which definition?)
+                input1 = self.weights[index] @ self.outputs # inputs given based on some definition.. may change (TODO, which definition?)
                 input2 = 0
-                output = neuron.get_output(input1=input1, input2=input2, timestep=0.01) # REMEMBER, use timestep 0.01, not floating timestep!! compare constant to accelerometer timestep
+                tonic = input[timestep][index]
+                output = neuron.get_output(input1=input1, input2=input2, timestep=0.01, tonic=tonic) # REMEMBER, use timestep 0.01, not floating timestep!! compare constant to accelerometer timestep
                 tmp_outputs[index] = output
                 self.stored_outputs[timestep][index] = output
-            self.outputs = tmp_outputs
+            self.outputs = copy.deepcopy(tmp_outputs)
 
     def get_outputs(self):
         """ Simple getter """

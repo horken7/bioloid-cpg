@@ -11,7 +11,7 @@ class GeneticAlgorithm:
         self.simulation_type = 0
 
         # how many genomes we evolve at once
-        self.population_size = 5
+        self.population_size = 25
 
         # which real motors the genomes correspond to
         self.labels = ['right_knee_Z', 'left_knee_Z', 'right_hip_X', 'right_hip_Y', 'right_hip_Z', 'left_hip_X', 'left_hip_Y', 'left_hip_Z', 'right_arm_X', 'right_arm_Y', 'right_arm_Z', 'left_arm_X', 'left_arm_Y', 'left_arm_Z', 'right_foot_X', 'right_foot_Z', 'left_foot_X', 'left_foot_Z']
@@ -22,6 +22,10 @@ class GeneticAlgorithm:
 
         # init weights, our actual genome
         self.weights = np.random.rand(self.population_size, self.degrees_of_freedom, self.degrees_of_freedom)*2 - 1
+        self.weights[1] = np.load('outputs/3.0/winning_weights_pop25_gen500_type0_withouttonic.npy')
+        self.weights[2] = np.load('outputs/3.0/winning_weights_pop25_gen500_type0.npy')
+        self.weights[3] = np.load('outputs/3.0/winning_weights_pop25_gen500_type1_with.npy')
+        self.weights[4] = np.load('outputs/3.0/winning_weights_pop25_gen1000_type0.npy')
 
         # using simulation time of one walking cycle of accelerometer data
         self.simulation_time = 1989
@@ -31,7 +35,7 @@ class GeneticAlgorithm:
         self.validation_data = accelerometer_data[self.labels]
 
         # generations to evolve
-        self.generations = 10
+        self.generations = 500
 
         # tournament size to use in selection
         self.tournament_size = round(self.population_size / 5)
@@ -50,7 +54,7 @@ class GeneticAlgorithm:
         # get the output results of our population based on current genome. put them in a correctly labeled df for easier analysis
         results = []
         for individual in population:
-            individual.simulate_neurons()
+            individual.simulate_neurons(self.validation_data.as_matrix())
             r = individual.get_outputs()
             rdf = pd.DataFrame(r)
             rdf.columns = (self.labels)
@@ -138,14 +142,14 @@ class GeneticAlgorithm:
         plt.figure()
         plt.subplot(1, 2, 1)
         plt.title('Mean fitness')
-        plt.xlabel('Iterations')
+        plt.xlabel('Generation')
         plt.ylabel('Fitness')
-        plt.plot(np.linspace(0, len(mean_f), len(mean_f)), mean_f)
+        plt.plot(np.linspace(0, len(mean_f)/100, len(mean_f)), mean_f)
         plt.subplot(1, 2, 2)
         plt.title('Max fitness')
         plt.xlabel('Iterations')
-        plt.ylabel('Fitness')
-        plt.plot(np.linspace(0, len(max_f), len(max_f)), max_f)
+        plt.ylabel('Generation')
+        plt.plot(np.linspace(0, len(max_f)/100, len(max_f)), max_f)
         plt.show()
 
     def plot_individual(self, individual):
@@ -233,19 +237,27 @@ if __name__ == "__main__":
     # find the index of the best individual
     index = fitness.index(max(fitness))
 
-    # get best individual
+    # get best individual outputs
     winner = results[index]
+
+    # get all weights
+    wghts = ga.weights
 
     # get best weights
     w = ga.weights[index]
 
+    # pickle data
+    label = '_pop25_gen500_type0_with'
+
+    winner.to_pickle('outputs/best_individual_output' + label + '.pkl') # subjective best individual
+    np.savetxt("outputs/weights" + label + ".csv", w, delimiter=",") # subjective best individual
+    np.save('outputs/winning_weights' + label, w) # subjective best individual
+
+    np.save('outputs/mean_fitness_over_time' + label, mean_fitness_over_time) #
+    np.save('outputs/max_fitness_over_time' + label, max_fitness_over_time)
+    np.save('outputs/all_weights' + label, wghts)
+
+
     # plot output of individual and fitness over time
     ga.plot_individual(winner)
     ga.plot_fitness(mean_fitness_over_time, max_fitness_over_time)
-
-    # pickle data
-    winner.to_pickle('outputs/best_individual_output.pkl')
-    np.save('outputs/mean_fitness_over_time', mean_fitness_over_time)
-    np.save('outputs/max_fitness_over_time', max_fitness_over_time)
-    np.save('outputs/winning_weights', w)
-    np.savetxt("outputs/weights.csv", w, delimiter=",")
