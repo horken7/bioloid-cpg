@@ -1,0 +1,85 @@
+% CREATED BY DAVID FRISK, 2017
+
+% IMPORT SETTINGS
+\documentclass[12pt,a4paper,twoside,openright]{article}
+\input{include/settings/Settings}
+%\setcounter{tocdepth}{0}
+\begin{document} 
+
+% COVER PAGE, TITLE PAGE AND IMPRINT PAGE
+\pagenumbering{roman}			% Roman numbering (starting with i (one)) until first main chapter
+\input{include/frontmatter/Titlepage}
+
+% ABSTRACT
+\newpage
+\input{include/frontmatter/Abstract}
+
+% ACKNOWLEDGEMENTS
+%\newpage
+%\input{include/frontmatter/Acknowledgements}
+
+
+% TABLE OF CONTENTS
+\tableofcontents
+
+\newpage
+
+% OTHER FRONTMATTER
+% List of figures (add to table of contents)
+%\cleardoublepage
+%\addcontentsline{toc}{chapter}{\listfigurename} 
+%\listoffigures
+% List of tables (add to table of contents)
+%\cleardoublepage
+%\addcontentsline{toc}{chapter}{\listtablename}  
+%\listoftables
+
+
+% START OF MAIN DOCUMENT
+%\cleardoublepage
+\setcounter{page}{1}
+\pagenumbering{arabic}			% Arabic numbering starting from 1 (one)
+\setlength{\parskip}{0pt plus 1pt}
+
+% INTRODUCTION
+\newpage
+\input{include/Introduction}
+
+% THEORY
+\newpage
+\input{include/Theory}
+
+% METHODS
+\newpage
+\input{include/Methods}
+
+% RESULTS
+\newpage
+\input{include/Results}
+
+%DISCUSSSION
+\newpage
+\input{include/Discussion}
+
+% CONCLUSION
+\newpage
+\input{include/Conclusion}
+
+%FURTHER WORK
+\newpage
+\input{include/FurtherWork}
+
+% REFERENCES / BIBLIOGRAPHY
+\cleardoublepage
+%\addcontentsline{toc}{Section}{Bibliography}
+\input{include/backmatter/References}
+
+% APPENDICES
+%\cleardoublepage
+\appendix
+%\setcounter{page}{1}
+%\pagenumbering{Roman}			% Capitalized roman numbering starting from I (one)
+\input{include/Appendix_1}
+\end{document}
+
+\begin{comment} In general with generic algorithms, a large portion of their performance depent on the quality of the fitness function. Further constraints could have been made on the fitness function, for instance constraining the output signals of the left and right joints of the same type (e.g. left and right hip) to be mirror eachother, to create a more realistic oscillatory symmetric movement.\end{comment}
